@@ -222,8 +222,41 @@ Pour chaque pli, la validation croisée va ajuster le modèle sur les *k-1* plis
 La validation croisée va permettre de trouver le $\lambda$ optimal, cest-à-dire le $\lambda$ qui maximise les performances moyennes sur les ensembles de validation, c'est à dire sur tous les plis.
 
 Avec la commande `cv.glmnet`, le $\lambda$ choisi est celui qui minimise la déviance binomiale. 
-**déviance binomiale à expliquer**
+C'est une mesure du **mauvais ajustement** du modèle par rapport aux données et une déviance basse pour un modèle logistique indique un bon ajustement du modèle aux données. 
 
+$$D = -2 \times \ell(\hat{\beta})$$ avec $\ell(\hat{\beta})$ la log-vraisemblance sur notre modèle avec les coefficients $\hat{\beta}$. 
+
+```{r}
+# on prend 10 k folds, le nombre de folds par défaut 
+
+# cross validation ridge 
+cv_ridge <- cv.glmnet(x = x_train, y = train_set$Ybin, family = "binomial", alpha = 0)
+# lambda optimal ridge
+best_lambda_ridge <- cv_ridge$lambda.min
+cat("Lambda optimal ridge :", best_lambda_ridge, "\n")
+
+# cross validation lasso 
+cv_lasso <- cv.glmnet(x = x_train, y = train_set$Ybin, family = "binomial", alpha = 1)
+
+# lambda optimal lasso 
+best_lambda_lasso <- cv_lasso$lambda.min
+cat("Lambda optimal lasso :", best_lambda_lasso, "\n")
+
+# graphiques déviance binomiale en fonction des log lambda
+# droite pointillé bleue correspond au lambda optimal
+
+par(mfrow = c(1,2))
+# pour la cross validation ridge
+plot(cv_ridge)
+abline(v = log(best_lambda_ridge), col = "blue", lty = 2, lwd = 2) 
+# pour la cross validation lasso 
+plot(cv_lasso)
+abline(v = log(best_lambda_lasso), col = "blue", lty = 2, lwd = 2)
+```
+
+Il s'agit d'un graphique représentant tous les $\lambda$ qui ont été testés avec notre cross validation, en affichant leur log, par rapport à la déviance binomiale. 
+
+Il s'agit de graphiques représentant tous les $\lambda$ qui ont été testés avec la cross validation, en affichant leur log, par rapport à la déviance binomiale. 
 
 
 
