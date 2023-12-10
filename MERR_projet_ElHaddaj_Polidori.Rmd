@@ -112,14 +112,19 @@ data <- data %>% select(-Target)
 
 # modèle complet 
 mod_log <- glm(Ybin ~ . , data, family = "binomial")
+summary(mod_log)
 ```
 
-On peut observer que plusieurs des variables présentes dans ce modèle ont une p-value < $\alpha = 5\%$ , tels que `Curricular.units.2nd.sem..approved.` ou `Tuition.fees.up.to.date`, on va donc pouvoir continuer nos analyses. 
+Plusieurs des variables présentes dans ce modèle ont une p-value < $\alpha = 5\%$ , tels que `Curricular.units.2nd.sem..approved.` ou `Tuition.fees.up.to.date`, les analyses ont donc pu être continuées. 
+
+Mais ce modèle affiche un message permettant de comprendre qu'il y a des problèmes de convergence dans le modèle ce qui va entraîner des problèmes dans le calcul des coefficients. 4 des coefficients n'ont pas pu être définis à cause de singularités, et d'autres affichent des coefficients NA. 
+
+Mais il va quand même être possible d'effectuer des modèles logistiques à l'aide d'autres méthodes. 
 
 
 # Echantillonnage 
 
-Avant de modéliser nos données, on créé un échantillon apprentissage (train) avec $70\%$ du jeu de données initial et un échantillon test avec $30\%$ du jeu de données initial. Pour cela, on split le data set de façon aléatoire. Cela permettra d'effectuer la modélisation sur l'échantillon d'apprentissage et ensuite on pourra tester ce modèle et effectuer des prédictions sur l'échantillon test qui ne sera pas encore touché.
+Avant de modéliser les données, le jeu de données a du être découpé aléatoirement en 2 échantillons : un échantillon apprentissage (train) avec $70\%$ du jeu de données initial et un échantillon test avec $30\%$ du jeu de données initial. Cela permettra d'effectuer la modélisation sur l'échantillon d'apprentissage et ensuite de tester ce modèle et effectuer des prédictions sur l'échantillon test qui ne sera pas encore touché.
 
 ```{r}
 # indices aléatoires pour split le dataset
@@ -132,7 +137,7 @@ train_set <- data[indices,]
 test_set <- data[-indices,]
 ```
 
-On vérifie que le jeu de données a été découpé de façon assez uniforme sur notre variable cible afin de ne pas se retrouver avec un manque de données pour créer les modèles. 
+Il a fallu vérifier que le jeu de données a été découpé de façon assez uniforme sur la variable cible afin de ne pas se retrouver avec un manque de données pour créer les modèles. 
 
 ```{r}
 # summary pour voir les répartitions de toutes les variables
@@ -151,11 +156,11 @@ round(prop.table(table(test_set$Ybin)) * 100, 2)
 
 # Modélisation
 
-Afin de trouver un modèle permettant de prédire au mieux notre variable cible, nous allons effectuer trois types de modélisations différentes : la régression logistique, la régression logistique pénalisée RIDGE ($\ell_2$) et la régression logistique pénalisée LASSO ($\ell_1$).  
+Afin de trouver un modèle permettant de prédire au mieux notre variable cible, nous allons effectuer deux types de modélisations différentes : la régression logistique pénalisée RIDGE ($\ell_2$) et la régression logistique pénalisée LASSO ($\ell_1$).  
 
 Avec la régression logistique, on peut rencontrer des problèmes de sur-entraînement (*overfitting*) et de colinéarité entre les variables explicatives. 
 
-C'est pour cela que l'on va également faire les modèles RIDGE et LASSO : ce sont des régressions qui vont pénaliser les coefficients afin d'avoir un compromis acceptable entre la performance du modèle et la pénalisation des coefficients, en minimisant l'erreur de prédiction tout en homogéninisant les valeurs des paramètres.  
+C'est pour cela que l'on va faire les modèles RIDGE et LASSO : ce sont des régressions qui vont pénaliser les coefficients afin d'avoir un compromis acceptable entre la performance du modèle et la pénalisation des coefficients, en minimisant l'erreur de prédiction tout en homogéninisant les valeurs des paramètres.  
 
 Dans les méthodes de régression pénalisées, $\lambda$ représente l'hyperparamètre clé utilisé pour régulariser les modèles. 
 
@@ -174,19 +179,51 @@ Les régularisations se font souvent via d'autres mécanismes, comme la pénalit
 Les pénalités étant définies en terme de valeurs numériques des coefficients, on va devoir transformer toutes nos variables factorielles (sauf la variable cible) en variables binaires. 
 
 ```{r}
-# jeu train et test avec toutes les variables factorielles transformées en binaire, sans la variable cible
+# jeu train et test avec toutes les variables factorielles transformées en binaire
+# sans la variable cible
 x_train <- model.matrix(Ybin ~ . -1 , data = train_set)
 x_test <- model.matrix(Ybin ~ . -1 , data = test_set)
 ```
 
 
-On avait déjà effectuer notre modèle logistique précédemment, et en observant le résumé du modèle, on peut voir que 4 coefficients n'ont pas pu être définis à cause de singularités, c'est à dire à cause de problèmes de dépendances linéaires entre des variables du modèle. 
+```{r}
+# ajustement du modèle ridge
+mod_ridge <- glmnet(x = x_train , y = train_set$Ybin, family = "binomial", alpha = 0)
 
-Il a donc fallu effectuer une sélection de variables sur ce modèle afin 
+# ajustement du modèle lasso 
+mod_lasso <- glmnet(x = x_train, y = train_set$Ybin, family = "binomial", alpha = 1)
 
+# pour avoir les coefficients de chaque variable par régression
+# pour chacun des 100 lambdas pris
+## coef.glmnet(mod_ridge)
+## coef.glmnet(mod_lasso)
+```
 
+En effectuant ces deux régressions avec la commande `glmnet`, un objet en ressort avec plusieurs informations. La valeur de $\lambda$ n'ayant pas été spécifiée, cet objet va contenir 100 valeurs de $\lambda$ différentes. Pour chacun de ces $\lambda$, il y aura les coefficients associés après la pénalisation. 
 
 ```{r}
-summary(mod_log)
+# graphiques des coefficients en fonction des log des lambdas
+par(mfrow = c(1,2))
+plot(mod_ridge, xvar = "lambda", main = "RIDGE", cex.main = 0.8)
+plot(mod_lasso, xvar = "lambda", main = "LASSO", cex.main = 0.8)
 ```
+
+Les valeurs des $log(\lambda)$ prises dans les modélisations ne sont pas les mêmes : celles utilisées dans la modélisation RIDGE sont en générales plus grandes que celles prises dans la modélisation LASSO. Mais ce qui en ressort pour les 2 modélisations est que plus le $\lambda$ pris est grand, plus les coefficients ont tendance à avoir une valeur nulle. C'est une des **particularités** du paramètre $\lambda$ : plus il est grand, moins il y aura de coefficients. Mais ce qui change de RIDGE à LASSO et qui est visible à travers ces deux graphiques est que les coefficients RIDGE vont converger vers 0 tous à peu près au même $\lambda$ quand il devient très grand, tandis que les coefficients LASSO vont converger vers 0 pour n'importe quel $\lambda$ même s'ils vont presque tous être nuls quand le $\lambda$ est élevé. 
+
+Mais afin d'avoir un modèle pénalisant permettant quand même d'avoir un bon pouvoir prédictif, il faut trouver le **meilleur lambda**. Il est donc nécessaire de faire de la validation croisée. 
+
+
+## Validation croisée
+
+La validation croisée va permettre de partitionner les données en plusieurs sous-ensembles grâce à la méthode des **k-folds**. Cette méthode divise les données en plis (*folds*) de taille égale. On utilisera les données d'apprentissage pour cela. 
+
+Pour chaque pli, la validation croisée va ajuster le modèle sur les *k-1* plis restants (*ensemble d'entraînement*) et évalué sur le pli retenu (*ensemble de validation*). Ce processus est répété *k* fois, chaque pli servant une fois comme ensemble de validation. 
+
+La validation croisée va permettre de trouver le $\lambda$ optimal, cest-à-dire le $\lambda$ qui maximise les performances moyennes sur les ensembles de validation, c'est à dire sur tous les plis.
+
+Avec la commande `cv.glmnet`, le $\lambda$ choisi est celui qui minimise la déviance binomiale. 
+**déviance binomiale à expliquer**
+
+
+
 
