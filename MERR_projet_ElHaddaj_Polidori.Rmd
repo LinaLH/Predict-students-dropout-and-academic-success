@@ -8,7 +8,6 @@ output:
   word_document: default
   html_document: default
 fontsize: 10pt
-
 ---
 
 ```{=html}
@@ -82,29 +81,25 @@ data$Ybin <- factor(ifelse(data$Target == "Graduate", 1, 0))
 
 ```
 
-
 # Introduction
 
-Nous avons un jeu de données composé d'**étudiants qui suivent différents cursus universitaires**. 
+Nous avons un jeu de données composé d'**étudiants qui suivent différents cursus universitaires**.
 
-Dans celui-ci, de nombreuses informations sur l'étudiant au moment de son arrivée dans son cursus ainsi que des sur ses performances académiques aux premier et second semestres sont connues. 
+Dans celui-ci, de nombreuses informations sur l'étudiant au moment de son arrivée dans son cursus ainsi que des sur ses performances académiques aux premier et second semestres sont connues.
 
-Grâce à toutes ces informations récoltées, nous allons tenter de répondre à la problématique suivante : 
+Grâce à toutes ces informations récoltées, nous allons tenter de répondre à la problématique suivante :
 
 **Comment utiliser les caractéristiques démographiques, académiques et socio-économiques des étudiants pour prédire avec précision les abandons d'étudiants et les réussites académiques dans un contexte éducatif donné, à un stade tôt de leur chemin académique ?**
-
 
 La variable cible choisie pour notre analyse est dérivée de la variable `Target`, qui représente le résultat académique des étudiants à la fin de la durée normale du cursus. Cette variable est formulée comme une tâche de classification à trois catégories, distinguant entre les étudiants qui ont abandonné (`dropout`), ceux qui sont inscrits (`enrolled`), et ceux qui ont obtenu leur diplôme (`graduate`).
 
 Afin de simplifier la tâche de prédiction, nous avons créé une variable binaire, `Ybin`, où les étudiants diplômés sont représentés par 1, et les étudiants inscrits ou ayant abandonné par 0. Cette approche nous permet de concentrer notre modèle sur la prédiction de la réussite académique à la fin de la durée normale du cursus, en distinguant de manière binaire entre les étudiants qui obtiennent leur diplôme et ceux qui n'atteignent pas cet objectif, simplifiant ainsi la complexité de la tâche de classification initiale à trois catégories.
 
-
-Dans une première partie (*cf. rendu 1*), nous avons effectué une étude préliminaire de nos données. Grâce à celle-ci, nous avons pu observer de la corrélation entre certaines de nos variables explicatives, ainsi qu'un lien probable entre certaines de nos variables explicatives et notre variable cible. On va donc modéliser nos données pour tenter d'expliquer et prédire au mieux notre variable cible. 
-
+Dans une première partie (*cf. rendu 1*), nous avons effectué une étude préliminaire de nos données. Grâce à celle-ci, nous avons pu observer de la corrélation entre certaines de nos variables explicatives, ainsi qu'un lien probable entre certaines de nos variables explicatives et notre variable cible. On va donc modéliser nos données pour tenter d'expliquer et prédire au mieux notre variable cible.
 
 # Modèle complet
 
-Dans un premier temps, notre variable cible étant maintenant une variable binaire, nous allons effectuer un modèle logistique complet, c'est-à-dire prenant en compte toutes les variables du jeu de données. Cette modélisation nous permettra déjà de savoir si au moins une des variables est significative dans notre modèle, et donc s'il est pertinent de tenter de modéliser la variable cible avec au moins une de ces variables prédictives. 
+Dans un premier temps, notre variable cible étant maintenant une variable binaire, nous allons effectuer un modèle logistique complet, c'est-à-dire prenant en compte toutes les variables du jeu de données. Cette modélisation nous permettra déjà de savoir si au moins une des variables est significative dans notre modèle, et donc s'il est pertinent de tenter de modéliser la variable cible avec au moins une de ces variables prédictives.
 
 ```{r}
 # on retire la variable Target pour ne pas avoir de conflit avec notre nouvelle variable cible
@@ -114,10 +109,9 @@ data <- data %>% select(-Target)
 mod_log <- glm(Ybin ~ . , data, family = "binomial")
 ```
 
-On peut observer que plusieurs des variables présentes dans ce modèle ont une p-value < $\alpha = 5\%$ , tels que `Curricular.units.2nd.sem..approved.` ou `Tuition.fees.up.to.date`, on va donc pouvoir continuer nos analyses. 
+On peut observer que plusieurs des variables présentes dans ce modèle ont une p-value \< $\alpha = 5\%$ , tels que `Curricular.units.2nd.sem..approved.` ou `Tuition.fees.up.to.date`, on va donc pouvoir continuer nos analyses.
 
-
-# Echantillonnage 
+# Echantillonnage
 
 Avant de modéliser nos données, on créé un échantillon apprentissage (train) avec $70\%$ du jeu de données initial et un échantillon test avec $30\%$ du jeu de données initial. Pour cela, on split le data set de façon aléatoire. Cela permettra d'effectuer la modélisation sur l'échantillon d'apprentissage et ensuite on pourra tester ce modèle et effectuer des prédictions sur l'échantillon test qui ne sera pas encore touché.
 
@@ -132,7 +126,7 @@ train_set <- data[indices,]
 test_set <- data[-indices,]
 ```
 
-On vérifie que le jeu de données a été découpé de façon assez uniforme sur notre variable cible afin de ne pas se retrouver avec un manque de données pour créer les modèles. 
+On vérifie que le jeu de données a été découpé de façon assez uniforme sur notre variable cible afin de ne pas se retrouver avec un manque de données pour créer les modèles.
 
 ```{r}
 # summary pour voir les répartitions de toutes les variables
@@ -148,30 +142,27 @@ round(prop.table(table(train_set$Ybin)) * 100, 2)
 round(prop.table(table(test_set$Ybin)) * 100, 2)
 ```
 
-
 # Modélisation
 
-Afin de trouver un modèle permettant de prédire au mieux notre variable cible, nous allons effectuer trois types de modélisations différentes : la régression logistique, la régression logistique pénalisée RIDGE ($\ell_2$) et la régression logistique pénalisée LASSO ($\ell_1$).  
+Afin de trouver un modèle permettant de prédire au mieux notre variable cible, nous allons effectuer trois types de modélisations différentes : la régression logistique, la régression logistique pénalisée RIDGE ($\ell_2$) et la régression logistique pénalisée LASSO ($\ell_1$).
 
-Avec la régression logistique, on peut rencontrer des problèmes de sur-entraînement (*overfitting*) et de colinéarité entre les variables explicatives. 
+Avec la régression logistique, on peut rencontrer des problèmes de sur-entraînement (*overfitting*) et de colinéarité entre les variables explicatives.
 
-C'est pour cela que l'on va également faire les modèles RIDGE et LASSO : ce sont des régressions qui vont pénaliser les coefficients afin d'avoir un compromis acceptable entre la performance du modèle et la pénalisation des coefficients, en minimisant l'erreur de prédiction tout en homogéninisant les valeurs des paramètres.  
+C'est pour cela que l'on va également faire les modèles RIDGE et LASSO : ce sont des régressions qui vont pénaliser les coefficients afin d'avoir un compromis acceptable entre la performance du modèle et la pénalisation des coefficients, en minimisant l'erreur de prédiction tout en homogéninisant les valeurs des paramètres.
 
-Dans les méthodes de régression pénalisées, $\lambda$ représente l'hyperparamètre clé utilisé pour régulariser les modèles. 
+Dans les méthodes de régression pénalisées, $\lambda$ représente l'hyperparamètre clé utilisé pour régulariser les modèles.
 
 En somme, $\lambda$ reste un outil clé dans la boîte à outils de la régularisation, mais son application dépend du modèle et de ses caractéristiques spécifiques, justifiant son utilisation dans des contextes comme la régression RIDGE et LASSO, mais pas nécessairement dans tous les types de modélisation, notamment la modélisation logistique classique.
 
-Pour LASSO, $\lambda$ favorise la parcimonie, forçant certains coefficients à zéro pour une sélection automatique de variables. 
+Pour LASSO, $\lambda$ favorise la parcimonie, forçant certains coefficients à zéro pour une sélection automatique de variables.
 
 RIDGE ne va pas vraiment servir à faire de la sélection de variables, mais plutôt à enlever la multi colinéarité des variables.
 
 Contrairement à RIDGE, qui prévient le sur-ajustement en restreignant les coefficients, LASSO offre une solution plus épurée
 
-Dans la modélisation logistique, l'utilisation de $\lambda$ n'est pas courante. 
-Les régularisations se font souvent via d'autres mécanismes, comme la pénalité Elastic Net, rendant $\lambda$ spécifique aux approches RIDGE et LASSO.
+Dans la modélisation logistique, l'utilisation de $\lambda$ n'est pas courante. Les régularisations se font souvent via d'autres mécanismes, comme la pénalité Elastic Net, rendant $\lambda$ spécifique aux approches RIDGE et LASSO.
 
-
-Les pénalités étant définies en terme de valeurs numériques des coefficients, on va devoir transformer toutes nos variables factorielles (sauf la variable cible) en variables binaires. 
+Les pénalités étant définies en terme de valeurs numériques des coefficients, on va devoir transformer toutes nos variables factorielles (sauf la variable cible) en variables binaires.
 
 ```{r}
 # jeu train et test avec toutes les variables factorielles transformées en binaire, sans la variable cible
@@ -179,14 +170,119 @@ x_train <- model.matrix(Ybin ~ . -1 , data = train_set)
 x_test <- model.matrix(Ybin ~ . -1 , data = test_set)
 ```
 
+On avait déjà effectuer notre modèle logistique précédemment, et en observant le résumé du modèle, on peut voir que 4 coefficients n'ont pas pu être définis à cause de singularités, c'est à dire à cause de problèmes de dépendances linéaires entre des variables du modèle.
 
-On avait déjà effectuer notre modèle logistique précédemment, et en observant le résumé du modèle, on peut voir que 4 coefficients n'ont pas pu être définis à cause de singularités, c'est à dire à cause de problèmes de dépendances linéaires entre des variables du modèle. 
-
-Il a donc fallu effectuer une sélection de variables sur ce modèle afin 
-
-
+Il a donc fallu effectuer une sélection de variables sur ce modèle afin
 
 ```{r}
 summary(mod_log)
 ```
 
+# Éxtension de l'étude
+
+Malgré les diverses options d'extension possibles pour notre étude de jeu de données, nous avons délibérément choisi d'explorer une approche différente en adoptant un arbre de classification plutôt que d'opter pour un modèle de régression Elastic Net ou un classificateur k plus proches voisins (k-NN). Cette décision repose sur plusieurs considérations clés :
+
+1.  **Interprétabilité :** Les arbres de classification se distinguent par leur facilité d'interprétation et de visualisation. Leur logique sous-jacente est rendue transparente grâce à des règles de décision simples.
+
+2.  **Non-linéarité :** Les arbres sont capables de saisir des relations non linéaires entre les caractéristiques et la variable cible sans nécessiter une spécification explicite de la forme fonctionnelle.
+
+3.  **Adaptabilité :** Les arbres peuvent traiter efficacement des jeux de données mixtes, comprenant à la fois des caractéristiques catégorielles et numériques, sans nécessiter un prétraitement intensif.
+
+4.  **Robustesse aux valeurs aberrantes :** Comparativement à certains modèles linéaires, les arbres de classification démontrent une relative robustesse face aux valeurs aberrantes.
+
+5.  **Découverte de quelque chose de différent :** En plus des considérations techniques, notre choix reflète également un désir d'exploration et de découverte dans le cadre de notre projet, et l'opportunité de tirer parti des particularités de notre ensemble de données.
+
+```{r}
+# Choix des variables pertinentes
+selected_vars <- c("Previous.qualification", "Admission.grade", "Debtor", "Mother.s.occupation")
+
+# Création d'un sous-ensemble avec les variables sélectionnées
+subset_data <- data[, c(selected_vars, "Ybin")]
+
+# Construction de l'arbre de classification
+tree_model <- rpart(Ybin ~ ., data = subset_data, method = "class")
+
+# Visualisation de l'arbre avec des informations détaillées
+rpart.plot(tree_model, extra = 101, under = TRUE, type = 2, fallen.leaves = TRUE)
+```
+
+```{r}
+summary(tree_model)
+```
+
+1.  **Variables importantes :**
+
+    -   La variable la plus importante est "Debtor", contribuant à 55 % de l'importance globale. Cela suggère que le fait d'avoir des dettes a un impact significatif sur la prédiction de la variable cible "Ybin" et donc sur la diplomation des étudiants.
+    -   Ensuite, "Admission.grade" contribue à 22 %, ce qui indique que les notes d'admission sont également un facteur crucial dans la prise de décision.
+    -   "Mother.s.occupation" contribue à 15 %, ce qui suggère que le métier de la mère de l'étudiant joue un rôle important dans la prédiction.
+    -   "Previous.qualification" contribue à 7 %, indiquant que le niveau d'éducation précédent a une influence moindre mais non négligeable.
+
+2.  **Nœuds de décision :**
+
+    -   Le nœud 3 (à gauche du nœud principal) utilise principalement la variable "Admission.grade" pour décider de la classification.
+
+    -   Le nœud 7 (à droite du nœud principal) utilise la variable "Mother.s.occupation" pour prendre des décisions.
+
+3.  **Feuilles :**
+
+    -   Les feuilles fournissent des probabilités de classe, par exemple, le nœud 2 (feuille) prédit la classe 0 (non diplomé) avec une probabilité de 0,799, indiquant une forte confiance dans la prédiction.
+
+    -   Le nœud 15 (feuille) prédit la classe 1 (diplômé) avec une probabilité de 0,591.
+
+4.  **Erreurs de classification :**
+
+    -   L'erreur de classification diminue à mesure que l'arbre progresse. Les feuilles ont des erreurs de classification spécifiques, par exemple, le nœud 15 a une erreur de 40,93 %.
+
+5.  **Variables de division :**
+
+    -   L'arbre utilise des variables spécifiques pour diviser les nœuds, telles que "Debtor", "Admission.grade", "Mother.s.occupation", et "Previous.qualification".
+
+Maintenant, examinons les résultats de l'arbre de classification pour chaque variable une à une :
+
+1.  **Debtor (Endetté) :**
+
+    -   **Variable Importance :** 55
+
+    -   L'arbre commence par diviser les données en fonction de la variable "Debtor". La division la plus significative est basée sur le fait d'être endetté ou non.
+
+    -   **Feuille 2 (Endetté) :** Il y a 503 observations dans cette feuille, avec une probabilité de 20% de diplomation (Ybin = 0) et 80% de non-diplomation (Ybin = 1).
+
+    -   **Feuille 3 (Non-endetté) :** Il y a 3921 observations dans cette feuille, avec une probabilité de diplomation de 46% (Ybin = 1) et de non-diplomation de 54% (Ybin = 0).
+
+2.  **Admission.grade (Note d'admission) :**
+
+    -   **Variable Importance :** 22
+
+    -   L'arbre effectue une division supplémentaire en fonction de la note d'admission, en particulier, si la note d'admission est inférieure à 112.25.
+
+    -   **Feuille 6 (Note d'admission \< 112.25) :** Il y a 514 observations dans cette feuille, avec une probabilité de diplomation de 37% (Ybin = 1) et de non-diplomation de 63% (Ybin = 0).
+
+    -   **Feuille 7 (Note d'admission \>= 112.25) :** Il y a 3407 observations dans cette feuille, avec une probabilité de diplomation de 44% (Ybin = 1) et de non-diplomation de 56% (Ybin = 0).
+
+3.  **Mother's Occupation (Profession de la mère) :**
+
+    -   **Variable Importance :** 15
+
+    -   L'arbre effectue une division basée sur la profession de la mère.
+
+    -   **Feuille 14 (Profession de la mère catégorie 0, 1 ou 2) :** Il y a 558 observations dans cette feuille, avec une probabilité de diplomation de 42% (Ybin = 1) et de non-diplomation de 58% (Ybin = 0).
+
+    -   **Feuille 15 (Profession de la mère catégorie 3 à 194) :** Il y a 2849 observations dans cette feuille, avec une probabilité de diplomation de 41% (Ybin = 1) et de non-diplomation de 59% (Ybin = 0).
+
+4.  **Previous qualification (Qualification précédente) :**
+
+    -   **Variable Importance :** 7
+
+    -   L'arbre effectue une division basée sur la qualification précédente.
+
+    -   **Feuille 30 (Qualification précédente catégorie 1 à 15) :** Il y a 345 observations dans cette feuille, avec une probabilité de diplomation de 46% (Ybin = 1) et de non-diplomation de 54% (Ybin = 0).
+
+    -   **Feuille 31 (Qualification précédente catégorie 19 à 43) :** Il y a 2504 observations dans cette feuille, avec une probabilité de diplomation de 39% (Ybin = 1) et de non-diplomation de 61% (Ybin = 0).
+
+Ces résultats fournissent des informations sur la manière dont chaque variable influence la prédiction de diplomation. Par exemple, être endetté semble avoir un impact significatif, tout comme la note d'admission. La profession de la mère et la qualification précédente ont également un certain effet, bien que moins important.
+
+En effet, l'accès à l'éducation supérieure représente souvent un défi financier important pour de nombreuses personnes, avec le coût annuel des études universitaires dans leur pays nécessitant parfois d'importants sacrifices financiers. Dans ce contexte, l'emprunt devient une nécessité incontournable pour certains individus cherchant à poursuivre des études supérieures.
+
+Par ailleurs, un facteur tout aussi crucial, bien que moins prégnant que l'endettement financier, réside dans l'emploi de la mère. Appartenir à une catégorie sociale spécifique en raison de l'emploi des parents peut véritablement servir de levier pour les enfants. Que cet emploi fournisse à la famille des ressources financières supplémentaires ou qu'il requière un niveau d'études élevé, offrant ainsi à l'enfant un modèle de réussite scolaire et des conseils précieux, le statut social des parents exerce un impact significatif sur le parcours éducatif des enfants.
+
+Il convient également de noter que des parents ayant suivi des études poussées peuvent créer un environnement familial plus structuré, avec une attention particulière portée à la scolarité de l'enfant. Cette dynamique familiale peut se traduire par un soutien accru, des attentes éducatives élevées et une sensibilisation accrue à l'importance de la réussite scolaire, contribuant ainsi de manière positive au développement académique de l'enfant.
