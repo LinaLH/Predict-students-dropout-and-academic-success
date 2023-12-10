@@ -213,7 +213,7 @@ Les valeurs des $log(\lambda)$ prises dans les modélisations ne sont pas les m�
 Mais afin d'avoir un modèle pénalisant permettant quand même d'avoir un bon pouvoir prédictif, il faut trouver le **meilleur lambda**. Il est donc nécessaire de faire de la validation croisée. 
 
 
-## Validation croisée
+# Validation croisée
 
 La validation croisée va permettre de partitionner les données en plusieurs sous-ensembles grâce à la méthode des **k-folds**. Cette méthode divise les données en plis (*folds*) de taille égale. On utilisera les données d'apprentissage pour cela. 
 
@@ -247,16 +247,22 @@ cat("Lambda optimal lasso :", best_lambda_lasso, "\n")
 
 par(mfrow = c(1,2))
 # pour la cross validation ridge
-plot(cv_ridge)
+plot(cv_ridge, main = "RIDGE")
 abline(v = log(best_lambda_ridge), col = "blue", lty = 2, lwd = 2) 
 # pour la cross validation lasso 
-plot(cv_lasso)
+plot(cv_lasso, main = "LASSO")
 abline(v = log(best_lambda_lasso), col = "blue", lty = 2, lwd = 2)
 ```
 
-Il s'agit d'un graphique représentant tous les $\lambda$ qui ont été testés avec notre cross validation, en affichant leur log, par rapport à la déviance binomiale. 
-
 Il s'agit de graphiques représentant tous les $\lambda$ qui ont été testés avec la cross validation, en affichant leur log, par rapport à la déviance binomiale. 
+
+Les $\lambda$ optimals en fonction de la méthode ne vont pas du tout être les mêmes : pour RIDGE, le $\lambda$ optimal est d'environ 0.0287 , qui est également un des plus petits $\lambda$ pris en compte dans la modélisation RIDGE initiale (avec 100 valeurs de $\lambda$ différentes) tandis que pour LASSO, le lambda optimal est d'environ 0.0052 et n'est pas un des plus petits pris en compte dans la modélisation, pourtant c'est bien celui qui minimise la déviance comme on peut le voir dans ce graphique. 
+
+
+Le **choix** de ces $\lambda$ va permettre de passer à la dernière étape pour le choix du modèle final : les prédictions sur l'échantillon test. 
+
+
+# Prédictions sur l'échantillon test
 
 
 
