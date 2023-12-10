@@ -115,7 +115,7 @@ mod_log <- glm(Ybin ~ . , data, family = "binomial")
 summary(mod_log)
 ```
 
-Plusieurs des variables présentes dans ce modèle ont une p-value < $\alpha = 5\%$ , tels que `Curricular.units.2nd.sem..approved.` ou `Tuition.fees.up.to.date`, les analyses ont donc pu être continuées. 
+Plusieurs des variables présentes dans ce modèle ont une p-value < $\alpha = 5\%$ , tels que **Curricular.units.2nd.sem..approved.**  ou **Tuition.fees.up.to.date**, les analyses ont donc pu être continuées. 
 
 Mais ce modèle affiche un message permettant de comprendre qu'il y a des problèmes de convergence dans le modèle ce qui va entraîner des problèmes dans le calcul des coefficients. 4 des coefficients n'ont pas pu être définis à cause de singularités, et d'autres affichent des coefficients NA. 
 
@@ -264,7 +264,83 @@ Le **choix** de ces $\lambda$ va permettre de passer à la dernière étape pour
 
 # Prédictions sur l'échantillon test
 
+Les prédictions vont permettre de mesurer la performance des deux modèles sur un échantillon non entraîné. 
 
+Dans un premier temps, il faut prédire les probabilités de la variable cible, qui vont ensuite être transformées en prédictions binaires de la variable cible. Pour cela, on va utiliser un seuil $S = 0.5$ (choisi par le critère MAP) mais cela ne veut pas dire que c'est le seuil le plus approprié pour mesurer les performances des modèles. Il sera vu juste après comment trouver un seuil acceptable. A partir de ce seuil, si l'estimation de la probabilité > S, alors la prédiction de la variable cible $\hat{Y} = 1$. Sinon, $\hat{Y} = 0$. 
+
+```{r}
+# estimations des probabilités de la variable cible
+pred_probs_ridge <- predict(mod_ridge, newx = x_test, s = best_lambda_ridge, type = "response")
+pred_probs_lasso <- predict(mod_lasso, newx = x_test, s = best_lambda_lasso, type = "response")
+
+# transformations des probabilités en prédictions binaires (0 ou 1)
+pred_classes_ridge <- ifelse(pred_probs_ridge > 0.5, 1, 0)
+pred_classes_lasso <- ifelse(pred_probs_lasso > 0.5, 1, 0)
+
+# stockage des prédictions et probas dans un dataframe
+result_ridge <- cbind.data.frame(pred_probs_ridge, pred_classes_ridge)
+colnames(result_ridge) <- c("Probabilités", "Prédictions")
+
+result_lasso <- cbind.data.frame(pred_probs_lasso, pred_classes_lasso)
+colnames(result_lasso) <- c("Probabilités", "Prédictions")
+```
+
+
+C'est à partir de ces prédictions que les performances du modèle vont être mesurées. 
+
+# Performances
+
+## Matrice de confusion 
+
+```{r, fig.show='hold'}
+# créations des matrices de confusions
+conf_matrix_ridge <- addmargins(table(Prédictions = pred_classes_ridge, Réalité = test_set$Ybin))
+conf_matrix_lasso <- addmargins(table(Prédictions = pred_classes_lasso, Réalité = test_set$Ybin))
+
+# affichage matrice de confusion ridge
+cat("\n", "RIDGE", "\n")
+print(conf_matrix_ridge)
+
+# affichage matrice de confusion lasso
+cat("\n", "LASSO", "\n")
+print(conf_matrix_lasso)
+```
+
+Ces matrices de confusions contiennent plusieurs informations : 
+
+-   **Vrais Positifs (VP) :** Cela représente le nombre d'étudiants pour lesquels le modèle a correctement prédit la réussite. ($\hat{Y} = 1$ quand $Y = 1$)
+
+    Le modèle RIDGE contient 578 VP contre 581 pour le modèle LASSO 
+    
+-   **Vrais** **Négatifs (VN) :** Cela représente le nombre d'étudiants pour lesquels le modèle a correctement prédit l'échec ($\hat{Y} = 0$ quand $Y = 0$)
+
+    548 pour RIDGE contre 559 pour LASSO 
+
+-   **Faux Positifs (FP) :** Cela signifie que le modèle a prédit à tort la réussite pour ces étudiants. ($\hat{Y} = 1$ quand $Y = 0$)
+
+    133 pour RIDGE contre 122 pour LASSO
+
+-   **Faux Négatifs (FN) :** Cela signifie que le modèle a omis de prédire la réussite pour ces étudiants. ($\hat{Y} = 0$ quand $Y = 1$)
+
+    69 pour RIDGE contre 66 pour LASSO
+    
+    
+Le modèle LASSO a une meilleure capacité à prédire à la fois les succès (VP élevés) et les échecs (VN élevés) que le modèle RIDGE. Les faux positifs (prédire à tort le succès) sont relativement faibles pour les deux modèles mais plus pour LASSO, ce qui suggère que le modèle n'est pas trop optimiste dans ses prédictions.
+Les faux négatifs (manquer la prédiction de réussite) sont deux fois plus faibles, indiquant que le modèle pourrait être assez sensible à ne pas manquer les réussites. 
+
+
+    
+
+    
+
+
+
+
+
+
+
+
+## Courbes ROC et AUC
 
 
 
