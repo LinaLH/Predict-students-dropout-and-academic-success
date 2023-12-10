@@ -1,0 +1,192 @@
+---
+title: 'MRR : Projet'
+author: "Lina EL HADDAJ & Ania POLIDORI"
+date: '2023-12-10'
+output:
+  pdf_document:
+    fig_caption: yes
+  word_document: default
+  html_document: default
+fontsize: 10pt
+
+---
+
+```{=html}
+<style type="text/css">
+  body .main-container{
+   max-width: 1100px !important;
+   width: 1100px !important;
+  }
+  body {
+    max-width: 1100px !important;
+    margin = auto;
+    padding: 5em;
+  }
+  body, td{
+    font-size: 2em;
+  }
+  code.r{
+    font-size: 1em;
+  }
+  pre{
+    font-size: 1em;
+    color: #191970;
+  }
+</style>
+```
+[**Remarque : accorder les bons facteurs (on a des chiffres mais c'est pas des numeric, pas d'itération --\> les définir correctement)**]{.underline}
+
+```{r setup, include=FALSE}
+rm(list = ls())
+set.seed(200)
+library(corrplot)
+library(ggplot2)
+library(dplyr)
+library(glmnet)
+library(GGally)
+library(ROCR)
+library(rpart)
+library(rpart.plot)
+```
+
+```{r}
+data <- read.csv(file = "data.csv", sep = ';', header = TRUE)
+
+# remise au bon format des variables à facteurs
+data <- data %>% mutate_at(vars(Marital.status,
+                                Application.mode,
+                                Application.order,
+                                Course,
+                                Daytime.evening.attendance.,
+                                Previous.qualification, 
+                                Nacionality,
+                                Mother.s.qualification,
+                                Father.s.qualification,
+                                Mother.s.occupation,
+                                Father.s.occupation,
+                                Displaced,
+                                Educational.special.needs,
+                                Debtor,
+                                Tuition.fees.up.to.date, 
+                                Gender,
+                                Scholarship.holder,
+                                International, 
+                                Target
+                                ), as.factor) 
+
+# changement des noms des facteurs du genre (pour que ce soit plus intuitif dans les analyses)
+data$Gender <- factor(data$Gender, labels=c("F", "M"))
+
+# création de la nouvelle variable cible
+data$Ybin <- factor(ifelse(data$Target == "Graduate", 1, 0))
+
+```
+
+
+# Introduction
+
+Nous avons un jeu de données composé d'**étudiants qui suivent différents cursus universitaires**. 
+
+Dans celui-ci, de nombreuses informations sur l'étudiant au moment de son arrivée dans son cursus ainsi que des sur ses performances académiques aux premier et second semestres sont connues. 
+
+Grâce à toutes ces informations récoltées, nous allons tenter de répondre à la problématique suivante : 
+
+**Comment utiliser les caractéristiques démographiques, académiques et socio-économiques des étudiants pour prédire avec précision les abandons d'étudiants et les réussites académiques dans un contexte éducatif donné, à un stade tôt de leur chemin académique ?**
+
+
+La variable cible choisie pour notre analyse est dérivée de la variable `Target`, qui représente le résultat académique des étudiants à la fin de la durée normale du cursus. Cette variable est formulée comme une tâche de classification à trois catégories, distinguant entre les étudiants qui ont abandonné (`dropout`), ceux qui sont inscrits (`enrolled`), et ceux qui ont obtenu leur diplôme (`graduate`).
+
+Afin de simplifier la tâche de prédiction, nous avons créé une variable binaire, `Ybin`, où les étudiants diplômés sont représentés par 1, et les étudiants inscrits ou ayant abandonné par 0. Cette approche nous permet de concentrer notre modèle sur la prédiction de la réussite académique à la fin de la durée normale du cursus, en distinguant de manière binaire entre les étudiants qui obtiennent leur diplôme et ceux qui n'atteignent pas cet objectif, simplifiant ainsi la complexité de la tâche de classification initiale à trois catégories.
+
+
+Dans une première partie (*cf. rendu 1*), nous avons effectué une étude préliminaire de nos données. Grâce à celle-ci, nous avons pu observer de la corrélation entre certaines de nos variables explicatives, ainsi qu'un lien probable entre certaines de nos variables explicatives et notre variable cible. On va donc modéliser nos données pour tenter d'expliquer et prédire au mieux notre variable cible. 
+
+
+# Modèle complet
+
+Dans un premier temps, notre variable cible étant maintenant une variable binaire, nous allons effectuer un modèle logistique complet, c'est-à-dire prenant en compte toutes les variables du jeu de données. Cette modélisation nous permettra déjà de savoir si au moins une des variables est significative dans notre modèle, et donc s'il est pertinent de tenter de modéliser la variable cible avec au moins une de ces variables prédictives. 
+
+```{r}
+# on retire la variable Target pour ne pas avoir de conflit avec notre nouvelle variable cible
+data <- data %>% select(-Target)
+
+# modèle complet 
+mod_log <- glm(Ybin ~ . , data, family = "binomial")
+```
+
+On peut observer que plusieurs des variables présentes dans ce modèle ont une p-value < $\alpha = 5\%$ , tels que `Curricular.units.2nd.sem..approved.` ou `Tuition.fees.up.to.date`, on va donc pouvoir continuer nos analyses. 
+
+
+# Echantillonnage 
+
+Avant de modéliser nos données, on créé un échantillon apprentissage (train) avec $70\%$ du jeu de données initial et un échantillon test avec $30\%$ du jeu de données initial. Pour cela, on split le data set de façon aléatoire. Cela permettra d'effectuer la modélisation sur l'échantillon d'apprentissage et ensuite on pourra tester ce modèle et effectuer des prédictions sur l'échantillon test qui ne sera pas encore touché.
+
+```{r}
+# indices aléatoires pour split le dataset
+indices <- sample(1:nrow(data), size = floor(0.70 * nrow(data)))
+
+# échantillon train
+train_set <- data[indices,]
+
+#échantillon test
+test_set <- data[-indices,]
+```
+
+On vérifie que le jeu de données a été découpé de façon assez uniforme sur notre variable cible afin de ne pas se retrouver avec un manque de données pour créer les modèles. 
+
+```{r}
+# summary pour voir les répartitions de toutes les variables
+# summary(train_set)
+# summary(test_set)
+```
+
+```{r}
+# proportions de la variable cible dans les deux nouveaux jeux de données
+# pour l'échantillon train
+round(prop.table(table(train_set$Ybin)) * 100, 2)
+# pour l'échantillon test
+round(prop.table(table(test_set$Ybin)) * 100, 2)
+```
+
+
+# Modélisation
+
+Afin de trouver un modèle permettant de prédire au mieux notre variable cible, nous allons effectuer trois types de modélisations différentes : la régression logistique, la régression logistique pénalisée RIDGE ($\ell_2$) et la régression logistique pénalisée LASSO ($\ell_1$).  
+
+Avec la régression logistique, on peut rencontrer des problèmes de sur-entraînement (*overfitting*) et de colinéarité entre les variables explicatives. 
+
+C'est pour cela que l'on va également faire les modèles RIDGE et LASSO : ce sont des régressions qui vont pénaliser les coefficients afin d'avoir un compromis acceptable entre la performance du modèle et la pénalisation des coefficients, en minimisant l'erreur de prédiction tout en homogéninisant les valeurs des paramètres.  
+
+Dans les méthodes de régression pénalisées, $\lambda$ représente l'hyperparamètre clé utilisé pour régulariser les modèles. 
+
+En somme, $\lambda$ reste un outil clé dans la boîte à outils de la régularisation, mais son application dépend du modèle et de ses caractéristiques spécifiques, justifiant son utilisation dans des contextes comme la régression RIDGE et LASSO, mais pas nécessairement dans tous les types de modélisation, notamment la modélisation logistique classique.
+
+Pour LASSO, $\lambda$ favorise la parcimonie, forçant certains coefficients à zéro pour une sélection automatique de variables. 
+
+RIDGE ne va pas vraiment servir à faire de la sélection de variables, mais plutôt à enlever la multi colinéarité des variables.
+
+Contrairement à RIDGE, qui prévient le sur-ajustement en restreignant les coefficients, LASSO offre une solution plus épurée
+
+Dans la modélisation logistique, l'utilisation de $\lambda$ n'est pas courante. 
+Les régularisations se font souvent via d'autres mécanismes, comme la pénalité Elastic Net, rendant $\lambda$ spécifique aux approches RIDGE et LASSO.
+
+
+Les pénalités étant définies en terme de valeurs numériques des coefficients, on va devoir transformer toutes nos variables factorielles (sauf la variable cible) en variables binaires. 
+
+```{r}
+# jeu train et test avec toutes les variables factorielles transformées en binaire, sans la variable cible
+x_train <- model.matrix(Ybin ~ . -1 , data = train_set)
+x_test <- model.matrix(Ybin ~ . -1 , data = test_set)
+```
+
+
+On avait déjà effectuer notre modèle logistique précédemment, et en observant le résumé du modèle, on peut voir que 4 coefficients n'ont pas pu être définis à cause de singularités, c'est à dire à cause de problèmes de dépendances linéaires entre des variables du modèle. 
+
+Il a donc fallu effectuer une sélection de variables sur ce modèle afin 
+
+
+
+```{r}
+summary(mod_log)
+```
+
