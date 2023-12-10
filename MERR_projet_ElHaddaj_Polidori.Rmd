@@ -329,7 +329,61 @@ Le modèle LASSO a une meilleure capacité à prédire à la fois les succès (V
 Les faux négatifs (manquer la prédiction de réussite) sont deux fois plus faibles, indiquant que le modèle pourrait être assez sensible à ne pas manquer les réussites. 
 
 
+Mais ces matrices de confusions peuvent également permettre de trouver des indicateurs sur le modèle permettant de connaître le bon ajustement ou non des modèles. 
+
+```{r, fig.show='hold'}
+# Création d'une fonction pour afficher plusieurs métriques d'évaluation
+evaluate_model <- function(actual, predicted) {
+  confusion_matrix <- table(Prédiction = predicted, Réalité = actual)
+  accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+  precision <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+  recall <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+  f1_score <- 2 * (precision * recall) / (precision + recall)
+  specificity = confusion_matrix[1,1] / sum(confusion_matrix[,1])
+  
+  cat("Précision :", precision, "\n")
+  cat("Rappel :", recall, "\n")
+  cat("F-mesure :", f1_score, "\n")
+  cat("Exactitude (Accuracy) :", accuracy, "\n")
+  cat("Spécificité :", specificity, "\n")
+  
+  return(confusion_matrix)
+}
+
+# Utilisation de la fonction
+cat("\n", "RIDGE", "\n")
+eval_ridge <- evaluate_model(test_set$Ybin, pred_classes_ridge)
+cat("\n", "LASSO", "\n")
+eval_lasso <- evaluate_model(test_set$Ybin, pred_classes_lasso)
+```
+
+-   **Précision (Precision) : **
+
+    Elle mesure la proportion de vrais positifs parmi les instances prédites comme positives.
+    Elle indique ici les étudiants prédits comme réussissant (diplômés) qui le sont réellement.
+    Elle est plus élevée pour le modèle LASSO à 89.8% que pour le modèle RIDGE a 89.33%, mais on ne remarque pas réellement de grosses distinctions entre les deux. 
     
+-    **Rappel (Recall) / Sensibilité : **
+
+    Également appelé sensibilité, il mesure la proportion de vrais positifs parmi toutes les instances réellement positives. Ces sont les étudiants réellement diplômés qui ont été correctement identifiés par le modèle.
+
+-   **F-mesure :**
+
+    C'est une moyenne harmonique de la précision et du rappel.
+    Elle donne une mesure équilibrée entre les deux.
+
+-   **Exactitude (Accuracy) :**
+
+    Elle mesure la proportion totale de prédictions correctes (vrais positifs + vrais négatifs).
+
+
+-   **Spécificité :**
+
+    Elle mesure la capacité du modèle à reconnaître les étudiants non diplômés parmi les étudiants non diplomés. 
+    
+    
+En comparant toutes ces mesures, on voit que LASSO a de meilleures performances que RIDGE. 
+
 
     
 
@@ -341,6 +395,8 @@ Les faux négatifs (manquer la prédiction de réussite) sont deux fois plus fai
 
 
 ## Courbes ROC et AUC
+
+
 
 
 
