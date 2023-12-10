@@ -318,7 +318,7 @@ mod_ridge <- glmnet(x = x_train , y = train_set$Ybin, family = "binomial", alpha
 
 $\lambda$ est l'hyperparamètre dans une régression RIDGE. C'est le paramètre qui sert à pénaliser la fonction de coût, et qui sert donc à éviter le sur-entraînement (*overfitting*)
 
-Quand on effectue la régression RIDGE avec la commande `glmnet`, on obtient un objet contenant plusieurs informations. Nous n'avons pas spécifié de valeur de $\lamba$, cet objet va donc contenir 100 valeurs de $\lambda$ différentes. Pour chacun de ces $\lambda$, nous allons avoir les coefficients associés après la pénalisation. 
+Quand on effectue la régression RIDGE avec la commande `glmnet`, on obtient un objet contenant plusieurs informations. Nous n'avons pas spécifié de valeur de $\lambda$, cet objet va donc contenir 100 valeurs de $\lambda$ différentes. Pour chacun de ces $\lambda$, nous allons avoir les coefficients associés après la pénalisation. 
 
 La régression RIDGE ne va pas vraiment servir à faire de la sélection de variables, mais plutôt à enlever la multi colinéarité des variables, en minimisant l'erreur de prédiction tout en homogéinisant les valeurs des paramètres. 
 
@@ -360,11 +360,15 @@ abline(v = log(best_lambda_ridge), col = "blue", lty = 2, lwd = 2)
 Il s'agit d'un graphique représentant tous les $\lambda$ qui ont été testés avec notre cross validation, en affichant leur log, par rapport à la déviance binomiale. 
 
 
+
+## Prédictions sur l'échantillon test
+
 ```{r}
 # Prédiction des probabilités
 pred_probs_ridge <- predict(mod_ridge, newx = x_test, s = best_lambda_ridge, type = "response")
 
 # Transformer les probabilités en prédictions binaires (0 ou 1)
+# seuil S = 0.5
 pred_classes_ridge <- ifelse(pred_probs_ridge > 0.5, 1, 0)
 
 # Affichage des prédictions
@@ -374,10 +378,9 @@ result_ridge
 
 
 
+## Performances 
 
-
-
-# Courbes ROC et AUC
+### Courbes ROC et AUC
 
 On va ensuite calculer l'AUC. C'est une mesure de performance permettant de mesurer le pouvoir prédictif du modèle. Elle peut se situer entre 1 et 0.5 : plus l'AUC est proche de 1, plus la qualité de prédiction du modèle est bien. Pour 0.5, on aura une prédiction aléatoire, ça sera une performance médiocre. 
 
@@ -403,6 +406,9 @@ cat("AUC sur l'ensemble de test :", auc_ridge, "\n")
 Cette valeur d'AUC est une indication positive de la capacité discriminante de notre modèle.
 Un AUC de 0.92 suggère que le modèle a une excellente capacité à distinguer entre les étudiants qui réussissent et ceux qui échouent.
 En d'autres termes, il est capable de classer correctement la plupart des étudiants en fonction des facteurs inclus dans le modèle.
+
+
+### Matrice de confusion
 
 ```{r}
 # Création de la matrice de confusion
@@ -450,7 +456,7 @@ evaluate_model <- function(actual, predicted) {
 }
 
 # Utilisation de la fonction
-conf_matrix <- evaluate_model(test_set$Ybin, pred_classes_ridge)
+conf_matrix_ridge <- evaluate_model(test_set$Ybin, pred_classes_ridge)
 ```
 
 -   **Précision (Precision) : 0.8933539**
@@ -476,16 +482,24 @@ conf_matrix <- evaluate_model(test_set$Ybin, pred_classes_ridge)
 
 # Régression LASSO
 
+## Modélisation 
+
+La régression LASSO va avoir tendance à mettre des coefficients à 0 et donc à faire de la sélection de variables. 
+
 ```{r}
-# Ajuster le modèle Lasso
+# ajustement du modèle Lasso
 mod_lasso <- glmnet(x = x_train, y = train_set$Ybin, family = "binomial", alpha = 1)
 
 # Tracer les coefficients en fonction du logarithme des valeurs lambda
 plot(mod_lasso, xvar = "lambda")
 ```
 
+
+## Cross Validation 
+
 ```{r}
 # Validation croisée pour trouver la valeur optimale de lambda
+# 10 k folds par défaut
 cv_lasso <- cv.glmnet(x = x_train, y = train_set$Ybin, family = "binomial", alpha = 1)
 
 # Afficher la valeur optimale de lambda
@@ -509,6 +523,63 @@ coefficients_lasso <- coef(cv_lasso, s = best_lambda_lasso)
 # Afficher les coefficients
 print(coefficients_lasso)
 ```
+
+## Prédictions sur l'échantillon test
+
+```{r}
+# estimations des probabilités
+pred_probs_lasso <- predict(mod_lasso, newx = x_test, s = best_lambda_lasso, type = "response")
+
+# Transformer les probabilités en prédictions binaires (0 ou 1)
+# pour décision
+# seuil S = 0.5
+pred_classes_lasso <- ifelse(pred_probs_lasso > 0.5, 1, 0)
+
+# Affichage des prédictions
+result_lasso <- data.frame(Prédiction = pred_classes_lasso, Probabilités = pred_probs_lasso)
+result_lasso
+```
+
+
+## Performances
+
+### Courbe ROC et AUC
+
+```{r}
+# Créez un objet de prédictions
+pred_lasso <- prediction(pred_probs_lasso, test_set$Ybin)
+
+# Évaluez les performances avec la courbe ROC
+roc_perf_lasso <- performance(pred_lasso, measure="tpr", x.measure="fpr")
+
+# courbe ROC
+plot(roc_perf_lasso, colorize = TRUE, main = "Courbe ROC - Ensemble de test", print.cutoffs.at = seq(0, 1,by = 0.1), text.adj = c(1.2, 1.2), lwd = 3)
+```
+
+```{r}
+# AUC
+auc_lasso <- performance(pred_lasso, "auc")@y.values[[1]]
+cat("AUC sur l'ensemble de test :", auc_lasso, "\n")
+```
+
+
+### Matrice de confusion
+
+```{r}
+# Création de la matrice de confusion
+conf_matrix_lasso <- addmargins(table(Prédiction = pred_classes_lasso, Réalité = test_set$Ybin))
+
+# Affichage de la matrice de confusion
+conf_matrix_lasso
+```
+
+```{r}
+# Utilisation de la fonction
+conf_matrix_lasso <- evaluate_model(test_set$Ybin, pred_classes_lasso)
+```
+
+
+
 
 # Régression Logistique
 
