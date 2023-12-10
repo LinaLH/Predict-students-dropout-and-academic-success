@@ -385,18 +385,37 @@ eval_lasso <- evaluate_model(test_set$Ybin, pred_classes_lasso)
 En comparant toutes ces mesures, on voit que LASSO a de meilleures performances que RIDGE. 
 
 
-    
-
-
-
-
-
-
-
 
 ## Courbes ROC et AUC
 
+Pour finir, il a fallu calculer l'AUC. C'est une mesure de performance permettant de mesurer le pouvoir prédictif du modèle. Elle peut se situer entre 1 et 0.5 : plus l'AUC est proche de 1, plus la qualité de prédiction du modèle est bien. Pour 0.5, c'est une prédiction aléatoire, ça sera une performance médiocre. 
 
+```{r, fig.show='hold'}
+pred_ridge <- prediction(pred_probs_ridge, test_set$Ybin)
+pred_lasso <- prediction(pred_probs_lasso, test_set$Ybin)
+
+# AUC
+auc_ridge <- performance(pred_ridge, "auc")@y.values[[1]]
+cat("RIDGE - AUC sur l'ensemble de test :", auc_ridge, "\n")
+auc_lasso <- performance(pred_lasso, "auc")@y.values[[1]]
+cat("LASSO - AUC sur l'ensemble de test :", auc_lasso, "\n")
+```
+Pour cette dernière mesure utilisée, l'AUC est meilleure pour LASSO que pour RIDGE. Sa valeur est une indication positive de la capacité discriminante de notre modèle et suggère que le modèle a une excellente capacité à distinguer entre les étudiants qui réussissent et ceux qui échouent.
+En d'autres termes, il est capable de classer correctement la plupart des étudiants en fonction des facteurs inclus dans le modèle.
+Il paraît donc évident après ces analyses et les indicateurs de performances vus que la régression LASSO convient mieux à nos données pour prédire notre variable cible. 
+
+Pour finir, on va tracer la courbe ROC. Cette courbe relie les points avec comme abscisse le taux de faux positifs (FPR) = 1-Spécifité au seuil S et en ordonnée la sensibilité (TPR) au seuil S, pour une grille de plusieurs seuils. L'air sous la courbe correspond à l'AUC, et cette courbe permet de trouver le seuil le plus adapté afin d'avoir le meilleur compromis possible entre Spécificité et Sensibilité.
+
+Plus la courbe est proche du coin supérieur gauche du carré, meilleur est le modèle. Cela représente le seuil permettant d'avoir les meilleurs performances vus grâce à la matrice de confusion. Il permet de capturer le plus possible de vrais évenements avec le moins possible de faux évenements. 
+
+```{r}
+roc_perf_lasso <- performance(pred_lasso, measure="tpr", x.measure="fpr")
+
+# courbe ROC
+plot(roc_perf_lasso, colorize = TRUE, main = "LASSO - Courbe ROC", print.cutoffs.at = seq(0, 1,by = 0.1), text.adj = c(1.2, 1.2), lwd = 3)
+```
+
+Le seuil semblant le plus pertinent est de 0.7 ou bien de 0.6. Il peut être judicieux de calculer à nouveau la matrice de confusion et de s'intéresser à nouveau aux mesures vues telles que la performance, la sensibilité et la spécificité, pour voir si le modèle est devenu plus performant en changeant le seuil de décision. 
 
 
 
