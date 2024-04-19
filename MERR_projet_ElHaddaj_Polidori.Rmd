@@ -34,7 +34,7 @@ fontsize: 10pt
   }
 </style>
 ```
-[**Remarque : accorder les bons facteurs (on a des chiffres mais c'est pas des numeric, pas d'itération --\> les définir correctement)**]{.underline}
+
 
 ```{r setup, include=FALSE}
 rm(list = ls())
